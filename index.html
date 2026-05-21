@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>LiOH Supplier CRM — KATKOV Production</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.14.1/dist/cdn.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Fira+Code:wght@400;500;600&family=Fira+Sans:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    * { font-family: 'Fira Sans', sans-serif; }
+    .mono { font-family: 'Fira Code', monospace !important; }
+    [x-cloak] { display: none !important; }
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: #020617; }
+    ::-webkit-scrollbar-thumb { background: #1E293B; border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: #334155; }
+    .row-hover:hover { background: rgba(30,41,59,0.6); }
+    .row-selected { background: rgba(30,41,59,0.9) !important; }
+    input[type="date"]::-webkit-calendar-picker-indicator { filter: invert(0.4); cursor: pointer; }
+  </style>
+</head>
+
+<body class="bg-[#020617] text-[#F8FAFC] min-h-screen" x-data="crm()" x-cloak>
+
+  <!-- ── HEADER ──────────────────────────────────────────── -->
+  <header class="sticky top-0 z-30 border-b border-[#1E293B] bg-[#020617]/95 backdrop-blur-sm">
+    <div class="px-6 h-14 flex items-center justify-between gap-4 max-w-[1800px] mx-auto">
+      <div class="flex items-center gap-3 flex-shrink-0">
+        <div class="w-7 h-7 rounded-md bg-gradient-to-br from-emerald-500 to-emerald-700 flex items-center justify-center">
+          <svg class="w-4 h-4 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19.428 15.428a2 2 0 00-1.022-.547l-2.387-.477a6 6 0 00-3.86.517l-.318.158a6 6 0 01-3.86.517L6.05 15.21a2 2 0 00-1.806.547M8 4h8l-1 1v5.172a2 2 0 00.586 1.414l5 5c1.26 1.26.367 3.414-1.415 3.414H4.828c-1.782 0-2.674-2.154-1.414-3.414l5-5A2 2 0 009 10.172V5L8 4z"/>
+          </svg>
+        </div>
+        <div>
+          <span class="font-semibold text-sm text-[#F1F5F9]">LiOH Supplier CRM</span>
+          <span class="text-[#334155] mx-2 text-xs">·</span>
+          <span class="text-[#475569] text-xs">KATKOV Production</span>
+        </div>
+      </div>
+      <div class="hidden md:flex items-center gap-2">
+        <template x-for="s in statusList" :key="s.id">
+          <button @click="filterStatus = filterStatus === s.id ? '' : s.id"
+            :class="filterStatus === s.id ? 'ring-1 ring-white/20 brightness-110' : 'opacity-70 hover:opacity-100'"
+            class="flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-medium cursor-pointer transition-all duration-150"
+            :style="`background:${s.bg}; color:${s.color};`">
+            <span class="mono font-semibold" x-text="countByStatus(s.id)"></span>
+            <span x-text="s.short"></span>
+          </button>
+        </template>
+      </div>
+      <div class="flex items-center gap-2 flex-shrink-0">
+        <button @click="exportCSV()" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium bg-[#1E293B] hover:bg-[#334155] border border-[#334155] cursor-pointer transition-colors duration-150">
+          <svg class="w-3.5 h-3.5 text-[#94A3B8]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"/>
+          </svg>
+          CSV
+        </button>
+        <span class="mono text-xs text-[#334155]" x-text="`${suppliers.length} suppliers`"></span>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── FILTER BAR ─────────────────────────────────────── -->
+  <div class="border-b border-[#1E293B] bg-[#0A0F1E]">
+    <div class="px-6 py-3 flex flex-wrap items-center gap-2.5 max-w-[1800px] mx-auto">
+      <div class="relative">
+        <svg class="absolute left-2.5 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-[#475569]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
+        </svg>
+        <input x-model="searchQuery" type="text" placeholder="Поиск по названию..."
+          class="pl-8 pr-3 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none focus:border-[#475569] w-52 text-[#F8FAFC] placeholder-[#334155]">
+      </div>
+      <select x-model="filterProvince" class="px-2.5 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none cursor-pointer text-[#94A3B8]">
+        <option value="">Все провинции</option>
+        <template x-for="p in provinces" :key="p"><option :value="p" x-text="p"></option></template>
+      </select>
+      <select x-model="filterSize" class="px-2.5 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none cursor-pointer text-[#94A3B8]">
+        <option value="">Все размеры</option>
+        <option value="Large">Large (крупные)</option>
+        <option value="Medium">Medium (средние)</option>
+        <option value="Small">Small (малые)</option>
+      </select>
+      <select x-model="sortBy" class="px-2.5 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none cursor-pointer text-[#94A3B8]">
+        <option value="id">По номеру</option>
+        <option value="capacity_desc">Мощность ↓</option>
+        <option value="capacity_asc">Мощность ↑</option>
+        <option value="name">По названию</option>
+        <option value="status">По статусу</option>
+      </select>
+      <div class="flex flex-wrap gap-1.5 items-center">
+        <button @click="filterStatus = ''" :class="filterStatus === '' ? 'bg-[#334155] text-[#F1F5F9]' : 'bg-[#1E293B] text-[#475569] hover:text-[#94A3B8]'"
+          class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-colors duration-150">Все</button>
+        <template x-for="s in statusList" :key="s.id">
+          <button @click="filterStatus = filterStatus === s.id ? '' : s.id"
+            :class="filterStatus === s.id ? 'ring-1 ring-white/20' : 'opacity-60 hover:opacity-90'"
+            class="px-2.5 py-1 rounded-md text-xs font-medium cursor-pointer transition-all duration-150"
+            :style="`background:${s.bg}; color:${s.color};`" x-text="s.label">
+          </button>
+        </template>
+      </div>
+      <button x-show="searchQuery || filterProvince || filterSize || filterStatus"
+        @click="clearFilters()" class="text-xs text-[#475569] hover:text-[#94A3B8] cursor-pointer transition-colors ml-1">× Сбросить</button>
+      <div class="ml-auto mono text-xs text-[#334155]" x-text="`${filteredSuppliers.length} / ${suppliers.length}`"></div>
+    </div>
+  </div>
+
+  <!-- ── MAIN LAYOUT ────────────────────────────────────── -->
+  <div class="flex max-w-[1800px] mx-auto">
+
+    <!-- Table -->
+    <div class="flex-1 min-w-0 px-6 py-4">
+      <div class="rounded-xl border border-[#1E293B] overflow-hidden">
+        <table class="w-full border-collapse">
+          <thead>
+            <tr class="bg-[#0F172A]">
+              <th class="w-1 p-0"></th>
+              <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest w-7">#</th>
+              <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest">Компания</th>
+              <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest hidden lg:table-cell">Провинция</th>
+              <th class="text-right py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest hidden xl:table-cell">MT/год</th>
+              <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest">Контакты</th>
+              <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest">Статус</th>
+              <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest hidden md:table-cell">Отправлено</th>
+              <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest hidden xl:table-cell">Заметки</th>
+            </tr>
+          </thead>
+          <tbody>
+            <template x-for="s in filteredSuppliers" :key="s.id">
+              <tr @click="selectSupplier(s)" class="border-t border-[#1E293B]/50 row-hover cursor-pointer transition-colors duration-100"
+                :class="selectedSupplier?.id === s.id ? 'row-selected' : ''">
+                <td class="w-0.5 p-0" :style="`background:${getStatusConfig(getState(s.id).status).color}; opacity:0.75;`"></td>
+                <td class="py-3 px-3"><span class="mono text-[11px] text-[#334155]" x-text="s.id"></span></td>
+                <td class="py-3 px-3">
+                  <div class="font-medium text-sm text-[#E2E8F0] leading-tight" x-text="s.name_en"></div>
+                  <div class="text-[11px] text-[#334155] mt-0.5" x-text="s.name_cn"></div>
+                </td>
+                <td class="py-3 px-3 hidden lg:table-cell">
+                  <span class="text-xs text-[#64748B]" x-text="s.province"></span>
+                </td>
+                <td class="py-3 px-3 text-right hidden xl:table-cell">
+                  <span class="mono text-sm font-semibold"
+                    :class="s.production_capacity_mtpy >= 50000 ? 'text-[#22C55E]' : s.production_capacity_mtpy >= 10000 ? 'text-[#F59E0B]' : 'text-[#64748B]'"
+                    x-text="formatCap(s.production_capacity_mtpy)"></span>
+                </td>
+                <!-- Contacts column: email + phone + wechat -->
+                <td class="py-3 px-3">
+                  <div class="space-y-0.5">
+                    <template x-if="s.email && s.email !== 'TBD'">
+                      <div class="mono text-[11px] text-[#3B82F6] truncate max-w-[200px]" x-text="s.email"></div>
+                    </template>
+                    <template x-if="s.phone && s.phone !== 'TBD'">
+                      <div class="mono text-[11px] text-[#94A3B8]" x-text="s.phone"></div>
+                    </template>
+                    <template x-if="s.wechat">
+                      <div class="flex items-center gap-1">
+                        <!-- WeChat icon -->
+                        <svg class="w-3 h-3 text-[#22C55E] flex-shrink-0" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.295.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.601-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.11.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1 .023-.156.49.49 0 0 1 .201-.228 5.08 5.08 0 0 0 2.505-4.037c.083-2.954-2.509-5.59-6.11-5.877zm-2.334 3.113c.538 0 .976.44.976.982a.979.979 0 0 1-.976.983.979.979 0 0 1-.976-.983c0-.543.437-.982.976-.982zm4.689 0c.538 0 .976.44.976.982a.979.979 0 0 1-.976.983.979.979 0 0 1-.976-.983c0-.543.437-.982.976-.982z"/>
+                        </svg>
+                        <span class="mono text-[11px] text-[#22C55E]" x-text="s.wechat"></span>
+                      </div>
+                    </template>
+                    <template x-if="(!s.email || s.email === 'TBD') && (!s.phone || s.phone === 'TBD') && !s.wechat">
+                      <span class="text-[11px] text-[#1E293B]">нет данных</span>
+                    </template>
+                  </div>
+                </td>
+                <td class="py-3 px-3">
+                  <div class="flex items-center gap-1.5">
+                    <span class="w-1.5 h-1.5 rounded-full flex-shrink-0" :style="`background:${getStatusConfig(getState(s.id).status).color};`"></span>
+                    <span class="text-xs font-medium whitespace-nowrap" :style="`color:${getStatusConfig(getState(s.id).status).color};`"
+                      x-text="getStatusConfig(getState(s.id).status).short"></span>
+                  </div>
+                </td>
+                <td class="py-3 px-3 hidden md:table-cell">
+                  <span class="mono text-[11px] text-[#475569]" x-text="getState(s.id).dateSent || '—'"></span>
+                </td>
+                <td class="py-3 px-3 hidden xl:table-cell">
+                  <span class="text-[11px] text-[#475569] truncate block max-w-[160px]"
+                    x-text="getState(s.id).notes ? getState(s.id).notes.slice(0,45)+'…' : '—'"></span>
+                </td>
+              </tr>
+            </template>
+          </tbody>
+        </table>
+        <div x-show="filteredSuppliers.length === 0" class="py-20 text-center">
+          <p class="text-sm text-[#334155]">Нет результатов по фильтрам</p>
+        </div>
+      </div>
+      <!-- Footer stats -->
+      <div class="mt-4 flex flex-wrap items-center gap-5">
+        <template x-for="s in statusList" :key="s.id">
+          <div class="flex items-center gap-1.5">
+            <span class="w-2 h-2 rounded-full" :style="`background:${s.color};`"></span>
+            <span class="text-xs text-[#475569]" x-text="s.label"></span>
+            <span class="mono text-xs font-semibold ml-0.5" :style="`color:${s.color};`" x-text="countByStatus(s.id)"></span>
+          </div>
+        </template>
+      </div>
+    </div>
+
+    <!-- ── DETAIL PANEL ────────────────────────────────── -->
+    <div x-show="selectedSupplier"
+      x-transition:enter="transition ease-out duration-200"
+      x-transition:enter-start="opacity-0 translate-x-8"
+      x-transition:enter-end="opacity-100 translate-x-0"
+      x-transition:leave="transition ease-in duration-150"
+      x-transition:leave-start="opacity-100"
+      x-transition:leave-end="opacity-0 translate-x-8"
+      class="w-[400px] flex-shrink-0 border-l border-[#1E293B] bg-[#0A0F1E] sticky top-14 self-start max-h-[calc(100vh-3.5rem)] overflow-y-auto">
+
+      <div x-show="selectedSupplier" class="p-5">
+        <!-- Header -->
+        <div class="flex items-start justify-between mb-5">
+          <div class="flex-1 min-w-0 pr-2">
+            <div class="flex items-center gap-2 mb-1">
+              <span class="w-2 h-2 rounded-full flex-shrink-0" :style="`background:${getStatusConfig(getState(selectedSupplier?.id).status).color};`"></span>
+              <span class="text-xs font-medium" :style="`color:${getStatusConfig(getState(selectedSupplier?.id).status).color};`"
+                x-text="getStatusConfig(getState(selectedSupplier?.id).status).label"></span>
+            </div>
+            <h2 class="font-semibold text-[#F1F5F9] text-[15px] leading-snug" x-text="selectedSupplier?.name_en"></h2>
+            <p class="text-sm text-[#475569] mt-0.5" x-text="selectedSupplier?.name_cn"></p>
+          </div>
+          <button @click="selectedSupplier = null" class="text-[#334155] hover:text-[#64748B] cursor-pointer p-1 transition-colors flex-shrink-0">
+            <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"/>
+            </svg>
+          </button>
+        </div>
+
+        <!-- Status selector -->
+        <div class="mb-5">
+          <label class="block text-[10px] font-semibold text-[#334155] uppercase tracking-widest mb-2">Статус запроса</label>
+          <div class="grid gap-1.5">
+            <template x-for="s in statusList" :key="s.id">
+              <button @click="setStatus(selectedSupplier.id, s.id)"
+                :class="getState(selectedSupplier.id).status === s.id ? 'ring-1 ring-white/15 brightness-110' : 'opacity-50 hover:opacity-80'"
+                class="flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm font-medium cursor-pointer transition-all duration-150 text-left"
+                :style="`background:${s.bg}; color:${s.color};`">
+                <span class="w-2 h-2 rounded-full flex-shrink-0" :style="`background:${s.color};`"></span>
+                <span class="flex-1" x-text="s.label"></span>
+                <svg x-show="getState(selectedSupplier.id).status === s.id" class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2.5">
+                  <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7"/>
+                </svg>
+              </button>
+            </template>
+          </div>
+        </div>
+
+        <!-- Dates -->
+        <div class="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label class="block text-[10px] font-semibold text-[#334155] uppercase tracking-widest mb-1.5">Дата отправки</label>
+            <input type="date" :value="getState(selectedSupplier?.id).dateSent"
+              @change="setField(selectedSupplier.id, 'dateSent', $event.target.value)"
+              class="w-full px-2.5 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none focus:border-[#475569] text-[#94A3B8] mono">
+          </div>
+          <div>
+            <label class="block text-[10px] font-semibold text-[#334155] uppercase tracking-widest mb-1.5">Дата ответа</label>
+            <input type="date" :value="getState(selectedSupplier?.id).dateResponse"
+              @change="setField(selectedSupplier.id, 'dateResponse', $event.target.value)"
+              class="w-full px-2.5 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none focus:border-[#475569] text-[#94A3B8] mono">
+          </div>
+        </div>
+
+        <!-- Notes -->
+        <div class="mb-5">
+          <label class="block text-[10px] font-semibold text-[#334155] uppercase tracking-widest mb-1.5">Заметки / Ответ поставщика</label>
+          <textarea rows="4" :value="getState(selectedSupplier?.id).notes"
+            @input="setField(selectedSupplier.id, 'notes', $event.target.value)"
+            placeholder="Условия, цена, комментарии..."
+            class="w-full px-3 py-2 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none focus:border-[#475569] text-[#F8FAFC] placeholder-[#1E293B] resize-none leading-relaxed"></textarea>
+        </div>
+
+        <div class="border-t border-[#1E293B] mb-4"></div>
+
+        <!-- Company info -->
+        <div class="mb-5">
+          <h3 class="text-[10px] font-semibold text-[#334155] uppercase tracking-widest mb-3">Данные компании</h3>
+          <div class="space-y-2.5">
+
+            <div class="flex justify-between gap-3">
+              <span class="text-xs text-[#334155] flex-shrink-0">Расположение</span>
+              <span class="text-xs text-[#94A3B8] text-right" x-text="selectedSupplier?.city"></span>
+            </div>
+
+            <div class="flex justify-between gap-3">
+              <span class="text-xs text-[#334155] flex-shrink-0">Мощность</span>
+              <span class="mono text-sm font-semibold"
+                :class="selectedSupplier?.production_capacity_mtpy >= 50000 ? 'text-[#22C55E]' : selectedSupplier?.production_capacity_mtpy >= 10000 ? 'text-[#F59E0B]' : 'text-[#94A3B8]'"
+                x-text="selectedSupplier ? formatCap(selectedSupplier.production_capacity_mtpy) + ' MT/год' : ''"></span>
+            </div>
+
+            <div class="flex justify-between gap-3">
+              <span class="text-xs text-[#334155] flex-shrink-0">Сорт</span>
+              <span class="text-xs text-[#94A3B8] text-right" x-text="selectedSupplier?.product_grade"></span>
+            </div>
+
+            <div class="flex justify-between gap-3">
+              <span class="text-xs text-[#334155] flex-shrink-0">Размер / Год</span>
+              <span class="text-xs text-[#64748B]" x-text="selectedSupplier ? selectedSupplier.company_size + ' · ' + selectedSupplier.founded_year : ''"></span>
+            </div>
+
+            <!-- Email -->
+            <template x-if="selectedSupplier?.email && selectedSupplier?.email !== 'TBD'">
+              <div class="flex justify-between gap-3 items-center">
+                <span class="text-xs text-[#334155] flex-shrink-0">Email</span>
+                <div class="flex items-center gap-2">
+                  <a :href="`mailto:${selectedSupplier?.email}`"
+                    class="mono text-xs text-[#3B82F6] hover:text-[#60A5FA] transition-colors text-right truncate max-w-[220px]"
+                    x-text="selectedSupplier?.email"></a>
+                  <button @click="copyText(selectedSupplier?.email)" class="text-[#334155] hover:text-[#64748B] cursor-pointer transition-colors flex-shrink-0" title="Копировать">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- Phone -->
+            <template x-if="selectedSupplier?.phone && selectedSupplier?.phone !== 'TBD'">
+              <div class="flex justify-between gap-3 items-center">
+                <span class="text-xs text-[#334155] flex-shrink-0">Телефон</span>
+                <div class="flex items-center gap-2">
+                  <span class="mono text-xs text-[#94A3B8]" x-text="selectedSupplier?.phone"></span>
+                  <button @click="copyText(selectedSupplier?.phone)" class="text-[#334155] hover:text-[#64748B] cursor-pointer transition-colors flex-shrink-0" title="Копировать">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- WeChat -->
+            <template x-if="selectedSupplier?.wechat">
+              <div class="flex justify-between gap-3 items-center">
+                <span class="text-xs text-[#334155] flex-shrink-0 flex items-center gap-1">
+                  <svg class="w-3 h-3 text-[#22C55E]" viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M8.691 2.188C3.891 2.188 0 5.476 0 9.53c0 2.212 1.17 4.203 3.002 5.55a.59.59 0 0 1 .213.665l-.39 1.48c-.019.07-.048.141-.048.213 0 .163.13.295.295.295a.326.326 0 0 0 .167-.054l1.903-1.114a.864.864 0 0 1 .717-.098 10.16 10.16 0 0 0 2.837.403c.276 0 .543-.027.811-.05-.857-2.578.157-4.972 1.932-6.446 1.703-1.415 3.882-1.98 5.853-1.838-.576-3.583-4.196-6.348-8.601-6.348zM5.785 5.991c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178A1.17 1.17 0 0 1 4.623 7.17c0-.651.52-1.18 1.162-1.18zm5.813 0c.642 0 1.162.529 1.162 1.18a1.17 1.17 0 0 1-1.162 1.178 1.17 1.17 0 0 1-1.162-1.178c0-.651.52-1.18 1.162-1.18zm5.34 2.867c-1.797-.052-3.746.512-5.28 1.786-1.72 1.428-2.687 3.72-1.78 6.22.942 2.453 3.666 4.229 6.884 4.229.826 0 1.622-.12 2.361-.336a.722.722 0 0 1 .598.082l1.584.926a.272.272 0 0 0 .14.047c.134 0 .24-.11.24-.247 0-.06-.023-.12-.038-.177l-.327-1.233a.582.582 0 0 1 .023-.156.49.49 0 0 1 .201-.228 5.08 5.08 0 0 0 2.505-4.037c.083-2.954-2.509-5.59-6.11-5.877zm-2.334 3.113c.538 0 .976.44.976.982a.979.979 0 0 1-.976.983.979.979 0 0 1-.976-.983c0-.543.437-.982.976-.982zm4.689 0c.538 0 .976.44.976.982a.979.979 0 0 1-.976.983.979.979 0 0 1-.976-.983c0-.543.437-.982.976-.982z"/>
+                  </svg>
+                  WeChat
+                </span>
+                <div class="flex items-center gap-2">
+                  <span class="mono text-xs text-[#22C55E]" x-text="selectedSupplier?.wechat"></span>
+                  <button @click="copyText(selectedSupplier?.wechat)" class="text-[#334155] hover:text-[#22C55E] cursor-pointer transition-colors flex-shrink-0" title="Копировать">
+                    <svg class="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                      <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+                    </svg>
+                  </button>
+                </div>
+              </div>
+            </template>
+
+            <!-- Website -->
+            <template x-if="selectedSupplier?.website && selectedSupplier?.website !== 'TBD'">
+              <div class="flex justify-between gap-3">
+                <span class="text-xs text-[#334155] flex-shrink-0">Сайт</span>
+                <a :href="`https://${selectedSupplier?.website}`" target="_blank"
+                  class="mono text-xs text-[#3B82F6] hover:text-[#60A5FA] transition-colors text-right"
+                  x-text="selectedSupplier?.website"></a>
+              </div>
+            </template>
+
+            <div class="pt-2 border-t border-[#1E293B]/60">
+              <p class="text-xs text-[#475569] leading-relaxed" x-text="selectedSupplier?.notes"></p>
+            </div>
+          </div>
+        </div>
+
+        <!-- RFQ + Copy contacts -->
+        <div class="space-y-2">
+          <button @click="copyRFQ(selectedSupplier)"
+            class="w-full py-2.5 px-4 bg-[#1E293B] hover:bg-[#334155] border border-[#334155] rounded-lg text-xs font-medium cursor-pointer transition-colors duration-150 flex items-center justify-center gap-2 text-[#94A3B8] hover:text-[#F1F5F9]">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z"/>
+            </svg>
+            Скопировать RFQ письмо
+          </button>
+          <button @click="copyAllContacts(selectedSupplier)"
+            class="w-full py-2 px-4 bg-transparent hover:bg-[#1E293B] border border-[#1E293B] rounded-lg text-xs font-medium cursor-pointer transition-colors duration-150 flex items-center justify-center gap-2 text-[#475569] hover:text-[#94A3B8]">
+            <svg class="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+              <path stroke-linecap="round" stroke-linejoin="round" d="M8 16H6a2 2 0 01-2-2V6a2 2 0 012-2h8a2 2 0 012 2v2m-6 12h8a2 2 0 002-2v-8a2 2 0 00-2-2h-8a2 2 0 00-2 2v8a2 2 0 002 2z"/>
+            </svg>
+            Скопировать все контакты
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div x-show="toast"
+    x-transition:enter="transition ease-out duration-200"
+    x-transition:enter-start="opacity-0 translate-y-2"
+    x-transition:enter-end="opacity-100 translate-y-0"
+    x-transition:leave="transition ease-in duration-150"
+    x-transition:leave-start="opacity-100"
+    x-transition:leave-end="opacity-0"
+    class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 bg-[#1E293B] border border-[#334155] rounded-lg px-4 py-2.5 text-xs text-[#F1F5F9] shadow-2xl mono"
+    x-text="toast">
+  </div>
+
+<script>
+function crm() {
+  return {
+    toast: '', toastTimer: null,
+    selectedSupplier: null,
+    searchQuery: '', filterProvince: '', filterSize: '', filterStatus: '',
+    sortBy: 'id',
+    states: {},
+
+    statusList: [
+      { id:'not_contacted',         label:'Не отправлен',        short:'Новый',      color:'#64748B', bg:'rgba(100,116,139,0.12)' },
+      { id:'sent_waiting',          label:'Ожидаем ответа',      short:'Отправлен',  color:'#F59E0B', bg:'rgba(245,158,11,0.12)'  },
+      { id:'responded_qualified',   label:'Ответ — подходит',    short:'Подходит',   color:'#22C55E', bg:'rgba(34,197,94,0.12)'   },
+      { id:'partial',               label:'На рассмотрении',     short:'Интерес',    color:'#3B82F6', bg:'rgba(59,130,246,0.12)'  },
+      { id:'responded_unqualified', label:'Ответ — не подходит', short:'Отказ',      color:'#EF4444', bg:'rgba(239,68,68,0.12)'   },
+    ],
+
+    suppliers: [
+      { id:1,  name_en:"Ganfeng Lithium Co., Ltd.",               name_cn:"赣锋锂业集团股份有限公司",       city:"Xinyu, Jiangxi",             province:"Jiangxi",          email:"gfsale@ganfenglithium.com",      phone:"+86-21-6168-1925",   wechat:null,                   website:"www.ganfenglithium.com",        company_size:"Large",  production_capacity_mtpy:50000,  product_grade:"Battery Grade",         founded_year:2000, notes:"Leading global producer, ~24% of world's LiOH. Headquarters Shanghai, main production Xinyu, Jiangxi. A/H-share listed." },
+      { id:2,  name_en:"Tianqi Lithium Corporation",              name_cn:"天齐锂业股份有限公司",           city:"Chengdu / Zhangjiagang",     province:"Sichuan & Jiangsu",email:"ir@tianqilithium.com",           phone:"+86-28-8518-3501",   wechat:null,                   website:"www.tianqilithium.com",         company_size:"Large",  production_capacity_mtpy:35000,  product_grade:"Battery Grade",         founded_year:2002, notes:"Multiple bases: Shehong 5,000 MT + Zhangjiagang 30,000 MT. A-share listed." },
+      { id:3,  name_en:"Sichuan Guorun New Materials",            name_cn:"四川尼科国润新材料有限公司",     city:"Chengdu, Sichuan",           province:"Sichuan",          email:null,                             phone:"+86-28-86155811",    wechat:null,                   website:"www.scgrm.com",                 company_size:"Medium", production_capacity_mtpy:8000,   product_grade:"Industrial & Battery",  founded_year:2000, notes:"Major exporter to 30+ countries. Contact: Vivian Qin (Sales Manager). Email not public — use website contact form or phone." },
+      { id:4,  name_en:"China Lithium Products Tech (CLPC)",      name_cn:"四川中国锂业产品技术有限公司",   city:"Sichuan",                    province:"Sichuan",          email:"info@oilchemical.com",           phone:"+86-28-85286336",    wechat:null,                   website:"www.oilchemical.com",           company_size:"Large",  production_capacity_mtpy:32000,  product_grade:"Battery Grade",         founded_year:1997, notes:"32,000 MT/yr LiOH + 39,000 MT/yr Li₂CO₃. Long-established reliability." },
+      { id:5,  name_en:"Yahua Industrial Group",                  name_cn:"四川雅化实业集团股份有限公司",   city:"Ya'an, Sichuan",             province:"Sichuan",          email:"yhjt@scyahua.com",              phone:"+86-28-85325316",    wechat:null,                   website:"www.scyahua.com",               company_size:"Large",  production_capacity_mtpy:63000,  product_grade:"Battery Grade",         founded_year:1998, notes:"63,000 MT/yr total across multiple bases. A-share listed. Strong growth trajectory." },
+      { id:6,  name_en:"Shandong Ruifu Lithium (Richnow)",        name_cn:"山东瑞福锂业有限公司",           city:"Taian, Shandong",            province:"Shandong",         email:"sales@sdrfly.com",              phone:"+86-538-3461266",    wechat:null,                   website:"www.sdrfly.com",                company_size:"Medium", production_capacity_mtpy:10000,  product_grade:"Battery Grade (99.7%)", founded_year:2010, notes:"High-purity battery grade specialist. Alt phones: 0538-3462269 / 0538-3466668." },
+      { id:7,  name_en:"Yongxing Special Materials",              name_cn:"永兴特种材料科技股份有限公司",   city:"Huzhou, Zhejiang",           province:"Zhejiang",         email:"yxzq@yongxingbxg.com",          phone:"+86-572-2350-300",   wechat:null,                   website:"www.yongxingbxg.com",           company_size:"Medium", production_capacity_mtpy:10000,  product_grade:"Battery Grade",         founded_year:2000, notes:"Proprietary cloud mica-to-LiOH technology. IR phone: 0572-2352506." },
+      { id:8,  name_en:"Yibin Tianyi Lithium (Tyeeli)",           name_cn:"宜宾市天宜锂业科创有限公司",     city:"Yibin, Sichuan",             province:"Sichuan",          email:"sales@tyeeli.com",              phone:"+86-187-2844-5662",  wechat:null,                   website:"www.tyeeli.com",                company_size:"Medium", production_capacity_mtpy:75000,  product_grade:"Battery Grade",         founded_year:2018, notes:"JV: CATL + Canmax. Phase 1: 20,000 MT operational, expanding to 75,000 MT. Address: No.99 Chang Xing Rd, Jiang An, Yibin." },
+      { id:9,  name_en:"Jiangsu Ronghui / General Lithium",        name_cn:"江苏容汇通用锂业股份有限公司",   city:"Rudong County, Nantong, Jiangsu",province:"Jiangsu",        email:"sales@palith.com",              phone:"+86-513-82658596",   wechat:null,                   website:"www.generallithium.com",        company_size:"Medium", production_capacity_mtpy:30000,  product_grade:"Battery Grade",         founded_year:2005, notes:"OTC-listed (837358), 701 employees. Haimen (Li₂CO₃) + Jiujiang (LiOH). Chairman: Wang Ping. GM: Sun Ling. Alt phones: 82658598 / 82658599. Fax: 82658099. Note: younergy.cn не их сайт (SSL expired)." },
+      { id:10, name_en:"Jiangsu Juming Chemical Technology",      name_cn:"江苏居鸣化学技术有限公司",       city:"Jiangyin, Jiangsu",          province:"Jiangsu",          email:"ellieliu@juminghem.com",        phone:"+86-510-8066-5518",  wechat:null,                   website:"www.jumingchem.com",            company_size:"Medium", production_capacity_mtpy:5000,   product_grade:"High-purity 99.9%",    founded_year:2005, notes:"Multiple grades, MOQ from 1 kg. Note: email domain is juminghem.com (not jumingchem.com) — verified correct." },
+      { id:11, name_en:"Sinomine (Jiangxi) Lithium Industry",     name_cn:"中矿资源（江西）锂业有限公司",   city:"Xinyu, Jiangxi",             province:"Jiangxi",          email:"ir@sinomine.cn",                phone:null,                 wechat:null,                   website:"www.sinomine.cn",               company_size:"Large",  production_capacity_mtpy:66000,  product_grade:"Battery Grade",         founded_year:2021, notes:"Flexible LiOH/Li₂CO₃ switching. Newest large-capacity facility in Xinyu." },
+      { id:12, name_en:"Jiangxi Yapo Lithium (Albemarle)",        name_cn:"江西雅保锂业有限公司",           city:"Fenyi County, Xinyu, Jiangxi",province:"Jiangxi",         email:null,                             phone:"+86-21-6103-8666",   wechat:null,                   website:"www.albemarle.cn",              company_size:"Large",  production_capacity_mtpy:38000,  product_grade:"Battery Grade",         founded_year:2016, notes:"Albemarle Corp (NYSE: ALB) subsidiary. Western quality standards. Phone is Shanghai regional office. Factory: Fenyi County Industrial Park, Xinyu." },
+      { id:13, name_en:"Suzhou Tianhua New Energy (Canmax)",      name_cn:"苏州天华新能源科技股份有限公司", city:"Suzhou, Jiangsu",            province:"Jiangsu",          email:null,                             phone:null,                 wechat:null,                   website:"www.canmax.com.cn",             company_size:"Large",  production_capacity_mtpy:135000, product_grade:"Battery Grade",         founded_year:1997, notes:"Largest capacity producer. Ticker: SZ 300390 (Canmax). Bases in Yibin, Meishan, Yichun. Contact via IR page on canmax.com.cn." },
+      { id:14, name_en:"Shengxin Lithium Energy (Chengxin)",      name_cn:"盛新锂能集团股份有限公司",       city:"Deyang & Suining, Sichuan",  province:"Sichuan",          email:"002240@cxlithium.com",          phone:"+86-755-8255-7707",  wechat:"+86-138-2368-7960",    website:"www.cxlithium.com",             company_size:"Large",  production_capacity_mtpy:137000, product_grade:"Battery Grade",         founded_year:2000, notes:"2nd largest capacity. Also known as Chengxin Lithium Group (002240). Bases in China and Indonesia." },
+      { id:15, name_en:"Hebei Fengjia New Materials",             name_cn:"河北冯家新材料技术有限公司",     city:"Shijiazhuang, Hebei",        province:"Hebei",            email:"admin@dloilchem.com",           phone:"+86-180-3267-3083",  wechat:null,                   website:"www.dloilchem.com",             company_size:"Small",  production_capacity_mtpy:3000,   product_grade:"Industrial & Pharma",  founded_year:2008, notes:"Fast response. Very low MOQ (1 kg). Ideal for sampling and qualification batches." },
+      { id:16, name_en:"Shaanxi Dideu Medichem",                  name_cn:"陕西迪欧医药化工有限公司",       city:"Xi'an, Shaanxi",             province:"Shaanxi",          email:"sales@dideu.com",               phone:"+86-29-89586682",    wechat:null,                   website:"www.dideu.com",                 company_size:"Medium", production_capacity_mtpy:5000,   product_grade:"Industrial (99%)",     founded_year:2000, notes:"Pharmaceutical & chemical specialist. Also: support@dideu.com." },
+      { id:17, name_en:"Tianjin Zhongxin Chemtech",               name_cn:"天津中信化工技术有限公司",       city:"Tianjin",                    province:"Tianjin",          email:"sales@tjzxchem.com",            phone:"+86-22-8988-0739",   wechat:null,                   website:"www.tjzxchem.com",              company_size:"Medium", production_capacity_mtpy:4000,   product_grade:"Industrial",           founded_year:1995, notes:"PU raw materials + lithium compounds. Good Tianjin port access for logistics." },
+      { id:18, name_en:"Jinan Zhonghe Chemical",                  name_cn:"济南中和化学有限公司",           city:"Tianqiao District, Jinan, Shandong",province:"Shandong",    email:null,                             phone:null,                 wechat:null,                   website:"jnzhonghe.en.alibaba.com",      company_size:"Small",  production_capacity_mtpy:2500,   product_grade:"Cosmetic & Industrial",founded_year:2010, notes:"Alibaba Verified Supplier Pro. Контакт: Yan Wang (王燕). Ответ ≤2ч, 97.2% доставка вовремя. Пиши напрямую: jnzhonghe.en.alibaba.com → Contact Supplier. Адрес: Room 1319, Jilong Mingdu Bldg, No.53 Jilong Rd, Jinan 250000." },
+      { id:19, name_en:"Jinan Sintop Co., Limited",               name_cn:"济南新拓化学有限公司",           city:"Jinan, Shandong",            province:"Shandong",         email:"sales@sintopchem.com",          phone:"+86-155-5048-1165",  wechat:"+86-155-5048-1165",    website:"www.sintopchem.com",            company_size:"Medium", production_capacity_mtpy:4000,   product_grade:"Industrial & Battery", founded_year:2005, notes:"MOQ 100–200 kg, response ≤1h. WeChat = same as phone number." },
+      { id:20, name_en:"Jiangsu Jiuwu Hi-Tech",                   name_cn:"江苏久吾高科技股份有限公司",     city:"Nanjing, Jiangsu",           province:"Jiangsu",          email:"ir@jiuwu.com",                  phone:"+86-25-5810-9595",   wechat:null,                   website:"www.jiuwu.com",                 company_size:"Medium", production_capacity_mtpy:8000,   product_grade:"Battery Grade",        founded_year:1997, notes:"Membrane filtration specialist. Overseas contact: Wendy Bai. Address: No.9 Yuansi Rd, Nanjing 211808." },
+      { id:21, name_en:"ChemFine International",                  name_cn:"卓越国际化学有限公司",           city:"Wuxi, Jiangsu",              province:"Jiangsu",          email:"sales@chemfineinternational.com",phone:"+86-510-8275-3588",  wechat:null,                   website:"www.chemfineinternational.com", company_size:"Medium", production_capacity_mtpy:5000,   product_grade:"Industrial Grade",     founded_year:2003, notes:"Bulk orders, MOQ 25 MT. Contact: Mr. Ye Wei Xin. Mobile: +86-138-0619-4144." },
+      { id:22, name_en:"Shanghai Mingyi New Materials",           name_cn:"上海明义新材料有限公司",         city:"Fengxian District, Shanghai",province:"Shanghai",         email:null,                             phone:null,                 wechat:null,                   website:"shanghaimingyi.en.made-in-china.com", company_size:"Small", production_capacity_mtpy:2000, product_grade:"Premium LiOH",        founded_year:2010, notes:"Contact: Mr. Leo Zhou (International Trade Manager). SGS Audited Gold Member на Made-in-China. Alibaba профиль 404 — используй Made-in-China: shanghaimingyi.en.made-in-china.com → Send Inquiry. MOQ 500 kg." },
+      { id:23, name_en:"Shandong Xima Supply Chain",              name_cn:"山东西马供应链管理有限公司",     city:"Shandong",                   province:"Shandong",         email:null,                             phone:null,                 wechat:null,                   website:null,                            company_size:"Small",  production_capacity_mtpy:1500,   product_grade:"Industrial Grade",     founded_year:2015, notes:"Нет публичного цифрового следа — вероятно, работает только через WeChat/офлайн. Для поиска: tianyancha.com → 山东西马供应链管理有限公司. Может быть торговым посредником без собственного производства." },
+      { id:24, name_en:"Brichem (Shandong) / Brychem",           name_cn:"布瑞凯姆（山东）有限公司",       city:"Linzi, Zibo, Shandong",      province:"Shandong",         email:"sales@brychem.com",             phone:null,                 wechat:null,                   website:"www.brychem.com",               company_size:"Small",  production_capacity_mtpy:2000,   product_grade:"Industrial",           founded_year:2012, notes:"Small order specialist. Address: No.772 Linzi Road, Linzi District, Zibo, Shandong 255400." },
+      { id:25, name_en:"Anhui Fitech Materials",                  name_cn:"安徽飞科新材料有限公司",         city:"Hefei, Anhui",               province:"Anhui",            email:"mandy@fitechem.com",            phone:"+86-139-6677-8557",  wechat:null,                   website:"www.fitechem.com",              company_size:"Medium", production_capacity_mtpy:3000,   product_grade:"Industrial & Specialty",founded_year:2008, notes:"Specialty chemicals. Address: Shushan Economic Development Zone, Hefei, Anhui." },
+      { id:26, name_en:"Shenzhen Chengxin Lithium Group",        name_cn:"深圳成信锂业集团",               city:"Chengdu, Sichuan",           province:"Sichuan",          email:"002240@cxlithium.com",          phone:"+86-755-8255-7707",  wechat:"+86-138-2368-7960",    website:"www.cxlithium.com",             company_size:"Large",  production_capacity_mtpy:25000,  product_grade:"Battery Grade",        founded_year:2000, notes:"Note: same group as Shengxin Lithium (#14) — both operate under Chengxin Lithium Group (002240). Chengdu production base." },
+    ],
+
+    init() {
+      const saved = localStorage.getItem('lioh_crm_v2');
+      if (saved) { try { this.states = JSON.parse(saved); } catch(e) {} }
+      this.suppliers.forEach(s => {
+        if (!this.states[s.id]) this.states[s.id] = { status:'not_contacted', dateSent:'', dateResponse:'', notes:'' };
+      });
+    },
+
+    save() { localStorage.setItem('lioh_crm_v2', JSON.stringify(this.states)); },
+    getState(id) { return this.states[id] || { status:'not_contacted', dateSent:'', dateResponse:'', notes:'' }; },
+
+    setStatus(id, status) {
+      if (!this.states[id]) this.states[id] = { status:'not_contacted', dateSent:'', dateResponse:'', notes:'' };
+      this.states[id].status = status;
+      if (status === 'sent_waiting' && !this.states[id].dateSent)
+        this.states[id].dateSent = new Date().toISOString().split('T')[0];
+      this.save();
+      this.flash('Статус обновлён');
+    },
+
+    setField(id, field, val) {
+      if (!this.states[id]) this.states[id] = { status:'not_contacted', dateSent:'', dateResponse:'', notes:'' };
+      this.states[id][field] = val;
+      this.save();
+    },
+
+    selectSupplier(s) { this.selectedSupplier = this.selectedSupplier?.id === s.id ? null : s; },
+    getStatusConfig(id) { return this.statusList.find(s => s.id === id) || this.statusList[0]; },
+    countByStatus(id) { return this.suppliers.filter(s => this.getState(s.id).status === id).length; },
+    get provinces() { return [...new Set(this.suppliers.map(s => s.province))].sort(); },
+
+    get filteredSuppliers() {
+      let list = this.suppliers;
+      if (this.searchQuery) {
+        const q = this.searchQuery.toLowerCase();
+        list = list.filter(s => s.name_en.toLowerCase().includes(q) || s.name_cn.includes(q) || s.city.toLowerCase().includes(q));
+      }
+      if (this.filterProvince) list = list.filter(s => s.province === this.filterProvince);
+      if (this.filterSize) list = list.filter(s => s.company_size.includes(this.filterSize));
+      if (this.filterStatus) list = list.filter(s => this.getState(s.id).status === this.filterStatus);
+      const sorted = [...list];
+      if (this.sortBy === 'capacity_desc') sorted.sort((a,b) => b.production_capacity_mtpy - a.production_capacity_mtpy);
+      else if (this.sortBy === 'capacity_asc') sorted.sort((a,b) => a.production_capacity_mtpy - b.production_capacity_mtpy);
+      else if (this.sortBy === 'name') sorted.sort((a,b) => a.name_en.localeCompare(b.name_en));
+      else if (this.sortBy === 'status') {
+        const order = ['responded_qualified','partial','sent_waiting','not_contacted','responded_unqualified'];
+        sorted.sort((a,b) => order.indexOf(this.getState(a.id).status) - order.indexOf(this.getState(b.id).status));
+      } else sorted.sort((a,b) => a.id - b.id);
+      return sorted;
+    },
+
+    clearFilters() { this.searchQuery=''; this.filterProvince=''; this.filterSize=''; this.filterStatus=''; },
+    formatCap(n) { return n >= 1000 ? (n/1000).toFixed(n%1000===0?0:1)+'k' : n.toString(); },
+
+    flash(msg) {
+      this.toast = msg;
+      if (this.toastTimer) clearTimeout(this.toastTimer);
+      this.toastTimer = setTimeout(() => this.toast = '', 2000);
+    },
+
+    copyText(text) {
+      if (!text) return;
+      navigator.clipboard.writeText(text).then(() => this.flash('Скопировано')).catch(() => {});
+    },
+
+    copyAllContacts(s) {
+      if (!s) return;
+      const lines = [`${s.name_en} / ${s.name_cn}`];
+      if (s.email && s.email !== 'TBD') lines.push(`Email: ${s.email}`);
+      if (s.phone && s.phone !== 'TBD') lines.push(`Phone: ${s.phone}`);
+      if (s.wechat) lines.push(`WeChat: ${s.wechat}`);
+      if (s.website && s.website !== 'TBD') lines.push(`Web: https://${s.website}`);
+      navigator.clipboard.writeText(lines.join('\n')).then(() => this.flash('Контакты скопированы')).catch(() => {});
+    },
+
+    copyRFQ(s) {
+      if (!s) return;
+      const text =
+`Subject: Inquiry — Lithium Hydroxide Monohydrate (LiOH·H₂O) RFQ
+
+Dear ${s.name_en} Team,
+
+We are KATKOV Production, seeking a reliable long-term supplier for lithium hydroxide monohydrate.
+
+PRODUCT SPECIFICATION:
+- Chemical: Lithium Hydroxide Monohydrate (LiOH·H₂O), CAS 1310-65-2
+- Standard: GB/T 26008-2020
+- Purity: LiOH ≥ 56.50%
+- Form: Coarse particles (粗颗粒单水氢氧化锂)
+- Grade: Battery Grade / Industrial Grade
+
+ORDER PARAMETERS:
+- Total quantity: 60 metric tons
+- Per shipment: 10 MT (approx. 6 batches)
+- Incoterms: CIF or FOB — open to discussion
+- Payment: T/T or L/C
+
+PLEASE PROVIDE:
+1. Price quote per MT (FOB/CIF)
+2. COA template and quality inspection report
+3. ISO 9001 certificate copy
+4. Lead time for first shipment
+5. Minimum order quantity
+
+We look forward to a long-term partnership.
+
+Best regards,
+KATKOV Production
+akatkov2014@gmail.com`;
+      navigator.clipboard.writeText(text).then(() => this.flash('RFQ скопирован')).catch(() => this.flash('Ошибка копирования'));
+    },
+
+    exportCSV() {
+      const h = ['ID','Company EN','Company CN','Province','City','Capacity MT/yr','Grade','Size','Email','Phone','WeChat','Website','Status','Date Sent','Date Response','Notes'];
+      const rows = this.suppliers.map(s => {
+        const st = this.getState(s.id);
+        return [s.id, `"${s.name_en}"`, `"${s.name_cn}"`, s.province, `"${s.city}"`,
+          s.production_capacity_mtpy, `"${s.product_grade}"`, s.company_size,
+          s.email || '', s.phone || '', s.wechat || '', s.website || '',
+          st.status, st.dateSent||'', st.dateResponse||'',
+          `"${(st.notes||'').replace(/"/g,'""')}"`
+        ].join(',');
+      });
+      const csv = [h.join(','), ...rows].join('\n');
+      const a = Object.assign(document.createElement('a'), {
+        href: URL.createObjectURL(new Blob(['﻿'+csv], {type:'text/csv;charset=utf-8;'})),
+        download: `lioh_suppliers_${new Date().toISOString().slice(0,10)}.csv`
+      });
+      a.click();
+      this.flash('CSV экспортирован');
+    }
+  }
+}
+</script>
+</body>
+</html>
