@@ -455,6 +455,31 @@ function crm() {
       this.suppliers.forEach(s => {
         if (!this.states[s.id]) this.states[s.id] = { status:'not_contacted', dateSent:'', dateResponse:'', notes:'' };
       });
+      this.syncFromServer();
+    },
+
+    async syncFromServer() {
+      try {
+        const res = await fetch('https://carbonex.su/rfq/crm_status.json?t=' + Date.now());
+        if (!res.ok) return;
+        const data = await res.json();
+        const serverStates = data.states || {};
+        let changed = false;
+        for (const [idStr, srv] of Object.entries(serverStates)) {
+          const id = parseInt(idStr);
+          const local = this.states[id];
+          // Сервер wins для sent_waiting и responded_qualified — не перетираем ручные статусы "отказ"
+          const serverWins = ['sent_waiting','responded_qualified','partial'].includes(srv.status);
+          const localIsManual = local && ['responded_unqualified'].includes(local.status);
+          if (!localIsManual && serverWins) {
+            if (!local || local.status !== srv.status || local.dateSent !== srv.dateSent || local.dateResponse !== srv.dateResponse) {
+              this.states[id] = { ...this.states[id], ...srv };
+              changed = true;
+            }
+          }
+        }
+        if (changed) { this.save(); this.flash('Синхронизировано с сервером'); }
+      } catch(e) {}
     },
 
     save() { localStorage.setItem('lioh_crm_v2', JSON.stringify(this.states)); },
