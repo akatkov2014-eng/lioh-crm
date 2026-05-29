@@ -512,12 +512,12 @@ function crm() {
         for (const [idStr, srv] of Object.entries(serverStates)) {
           const id = parseInt(idStr);
           const local = this.states[id];
-          // Сервер wins для sent_waiting и responded_qualified — не перетираем ручные статусы "отказ"
+          // Не перетираем если пользователь вручную поставил статус
+          if (local && local.manual) continue;
           const serverWins = ['sent_waiting','responded_qualified','partial','bounced'].includes(srv.status);
-          const localIsManual = local && ['responded_unqualified'].includes(local.status);
-          if (!localIsManual && serverWins) {
+          if (serverWins) {
             if (!local || local.status !== srv.status || local.dateSent !== srv.dateSent || local.dateResponse !== srv.dateResponse) {
-              this.states[id] = { ...this.states[id], ...srv };
+              this.states[id] = { ...this.states[id], ...srv, manual: false };
               changed = true;
             }
           }
@@ -532,6 +532,7 @@ function crm() {
     setStatus(id, status) {
       if (!this.states[id]) this.states[id] = { status:'not_contacted', dateSent:'', dateResponse:'', notes:'' };
       this.states[id].status = status;
+      this.states[id].manual = true;
       if (status === 'sent_waiting' && !this.states[id].dateSent)
         this.states[id].dateSent = new Date().toISOString().split('T')[0];
       this.save();
