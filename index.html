@@ -275,6 +275,46 @@
 
         <div class="border-t border-[#1E293B] mb-4"></div>
 
+        <!-- Response from supplier -->
+        <template x-if="getResponse(selectedSupplier?.id)">
+          <div class="mb-5">
+            <h3 class="text-[10px] font-semibold text-[#22C55E] uppercase tracking-widest mb-3 flex items-center gap-2">
+              <span class="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>
+              Входящий ответ
+            </h3>
+            <div class="space-y-3">
+              <div class="flex items-center gap-2 text-[11px] text-[#475569]">
+                <span x-text="getResponse(selectedSupplier.id).received_at?.slice(0,10)"></span>
+                <span class="text-[#1E293B]">·</span>
+                <span class="px-2 py-0.5 rounded text-[10px] font-semibold"
+                  :class="getResponse(selectedSupplier.id).response_type === 'CONCRETE_DATA' ? 'bg-emerald-900/40 text-emerald-400' : getResponse(selectedSupplier.id).response_type === 'AUTO_ACK' ? 'bg-slate-800 text-slate-400' : 'bg-blue-900/40 text-blue-400'"
+                  x-text="getResponse(selectedSupplier.id).response_type"></span>
+              </div>
+              <div class="bg-[#0F172A] border border-[#1E293B] rounded-lg p-3 text-[11px] text-[#94A3B8] leading-relaxed max-h-48 overflow-y-auto whitespace-pre-wrap mono"
+                x-text="getResponse(selectedSupplier.id).email_body"></div>
+              <template x-if="getResponse(selectedSupplier.id).attachments?.length > 0">
+                <div>
+                  <div class="text-[10px] font-semibold text-[#334155] uppercase tracking-widest mb-2">Вложения</div>
+                  <div class="space-y-1.5">
+                    <template x-for="att in getResponse(selectedSupplier.id).attachments" :key="att.filename">
+                      <a :href="'https://carbonex.su' + att.url" target="_blank"
+                        class="flex items-center gap-2 px-3 py-2 bg-[#0F172A] border border-[#1E293B] hover:border-[#334155] rounded-lg text-xs text-[#3B82F6] hover:text-[#60A5FA] transition-colors cursor-pointer">
+                        <svg class="w-3.5 h-3.5 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                          <path stroke-linecap="round" stroke-linejoin="round" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"/>
+                        </svg>
+                        <span class="truncate flex-1" x-text="att.filename"></span>
+                        <span class="text-[#334155] flex-shrink-0 mono text-[10px]" x-text="att.size ? Math.round(att.size/1024) + ' KB' : ''"></span>
+                      </a>
+                    </template>
+                  </div>
+                </div>
+              </template>
+            </div>
+          </div>
+        </template>
+
+        <div class="border-t border-[#1E293B] mb-4"></div>
+
         <!-- Company info -->
         <div class="mb-5">
           <h3 class="text-[10px] font-semibold text-[#334155] uppercase tracking-widest mb-3">Данные компании</h3>
@@ -422,12 +462,17 @@ function crm() {
     ],
 
     suppliers: [],
+    responses: [],
 
     async init() {
-      // Грузим поставщиков с сервера
+      // Грузим поставщиков и ответы с сервера
       try {
         const res = await fetch('https://carbonex.su/rfq/suppliers.json?t=' + Date.now());
         if (res.ok) this.suppliers = await res.json();
+      } catch(e) {}
+      try {
+        const rRes = await fetch('https://carbonex.su/rfq/responses.json?t=' + Date.now());
+        if (rRes.ok) this.responses = await rRes.json();
       } catch(e) {}
       this.loading = false;
 
@@ -483,6 +528,7 @@ function crm() {
     },
 
     selectSupplier(s) { this.selectedSupplier = this.selectedSupplier?.id === s.id ? null : s; },
+    getResponse(id) { return this.responses.find(r => r.supplier_id === id) || null; },
     getStatusConfig(id) { return this.statusList.find(s => s.id === id) || this.statusList[0]; },
     countByStatus(id) { return this.suppliers.filter(s => this.getState(s.id).status === id).length; },
     get provinces() { return [...new Set(this.suppliers.map(s => s.province))].sort(); },
