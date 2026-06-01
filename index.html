@@ -121,7 +121,8 @@
               <th class="text-right py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest hidden xl:table-cell">MT/год</th>
               <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest">Контакты</th>
               <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest">Статус</th>
-              <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest hidden md:table-cell">Отправлено</th>
+              <th class="text-right py-2.5 px-3 text-[10px] font-semibold text-[#22C55E] uppercase tracking-widest hidden lg:table-cell">LiOH $/MT</th>
+              <th class="text-right py-2.5 px-3 text-[10px] font-semibold text-[#3B82F6] uppercase tracking-widest hidden xl:table-cell">Li₂CO₃ $/MT</th>
               <th class="text-left py-2.5 px-3 text-[10px] font-semibold text-[#334155] uppercase tracking-widest hidden xl:table-cell">Заметки</th>
             </tr>
           </thead>
@@ -183,12 +184,33 @@
                     </template>
                   </div>
                 </td>
-                <td class="py-3 px-3 hidden md:table-cell">
-                  <span class="mono text-[11px] text-[#475569]" x-text="getState(s.id).dateSent || '—'"></span>
+                <!-- LiOH price -->
+                <td class="py-3 px-3 text-right hidden lg:table-cell">
+                  <template x-if="getBestPrice(s.id, 'lioh')">
+                    <div>
+                      <div class="mono text-sm font-semibold text-[#22C55E]" x-text="'$' + getBestPrice(s.id, 'lioh').toLocaleString()"></div>
+                      <div class="text-[10px] text-[#334155]" x-text="getPriceGrade(s.id, 'lioh')"></div>
+                    </div>
+                  </template>
+                  <template x-if="!getBestPrice(s.id, 'lioh')">
+                    <span class="text-[11px] text-[#1E293B]">—</span>
+                  </template>
+                </td>
+                <!-- Li2CO3 price -->
+                <td class="py-3 px-3 text-right hidden xl:table-cell">
+                  <template x-if="getBestPrice(s.id, 'li2co3')">
+                    <div>
+                      <div class="mono text-sm font-semibold text-[#3B82F6]" x-text="'$' + getBestPrice(s.id, 'li2co3').toLocaleString()"></div>
+                      <div class="text-[10px] text-[#334155]" x-text="getPriceGrade(s.id, 'li2co3')"></div>
+                    </div>
+                  </template>
+                  <template x-if="!getBestPrice(s.id, 'li2co3')">
+                    <span class="text-[11px] text-[#1E293B]">—</span>
+                  </template>
                 </td>
                 <td class="py-3 px-3 hidden xl:table-cell">
-                  <span class="text-[11px] text-[#475569] truncate block max-w-[160px]"
-                    x-text="getState(s.id).notes ? getState(s.id).notes.slice(0,45)+'…' : '—'"></span>
+                  <span class="text-[11px] text-[#475569] truncate block max-w-[120px]"
+                    x-text="getState(s.id).notes ? getState(s.id).notes.slice(0,35)+'…' : '—'"></span>
                 </td>
               </tr>
             </template>
@@ -322,6 +344,62 @@
             </div>
           </div>
         </template>
+
+        <div class="border-t border-[#1E293B] mb-4"></div>
+
+        <!-- Price block -->
+        <div class="mb-5">
+          <h3 class="text-[10px] font-semibold text-[#334155] uppercase tracking-widest mb-3 flex items-center justify-between">
+            <span>Предложение ($/MT)</span>
+            <template x-if="getPriceData(selectedSupplier?.id).price_terms">
+              <span class="px-2 py-0.5 rounded text-[10px] bg-[#1E293B] text-[#64748B] mono"
+                x-text="getPriceData(selectedSupplier.id).price_terms"></span>
+            </template>
+          </h3>
+          <div class="grid grid-cols-2 gap-2 mb-3">
+            <template x-for="field in priceFields" :key="field.key">
+              <div>
+                <label class="block text-[10px] text-[#334155] mb-1" x-text="field.label"></label>
+                <div class="relative">
+                  <span class="absolute left-2.5 top-1/2 -translate-y-1/2 text-[11px] text-[#475569]">$</span>
+                  <input type="number" step="10" min="0"
+                    :value="getPriceField(selectedSupplier?.id, field.key)"
+                    @change="setPriceField(selectedSupplier.id, field.key, $event.target.value ? +$event.target.value : null)"
+                    :placeholder="getParsedPrice(selectedSupplier?.id, field.key) ? getParsedPrice(selectedSupplier?.id, field.key).toLocaleString() : '—'"
+                    :class="getPriceField(selectedSupplier?.id, field.key) ? field.color : 'text-[#475569]'"
+                    class="w-full pl-5 pr-2 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none focus:border-[#475569] mono placeholder-[#334155]">
+                </div>
+              </div>
+            </template>
+          </div>
+          <div class="grid grid-cols-3 gap-2">
+            <div>
+              <label class="block text-[10px] text-[#334155] mb-1">MOQ (MT)</label>
+              <input type="number" step="1" min="0"
+                :value="getPriceData(selectedSupplier?.id).moq_tons"
+                @change="setPriceField(selectedSupplier.id, 'moq_tons', $event.target.value ? +$event.target.value : null)"
+                placeholder="—"
+                class="w-full px-2.5 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none focus:border-[#475569] mono text-[#94A3B8] placeholder-[#334155]">
+            </div>
+            <div>
+              <label class="block text-[10px] text-[#334155] mb-1">Lead (дней)</label>
+              <input type="number" step="1" min="0"
+                :value="getPriceData(selectedSupplier?.id).lead_days"
+                @change="setPriceField(selectedSupplier.id, 'lead_days', $event.target.value ? +$event.target.value : null)"
+                placeholder="—"
+                class="w-full px-2.5 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none focus:border-[#475569] mono text-[#94A3B8] placeholder-[#334155]">
+            </div>
+            <div>
+              <label class="block text-[10px] text-[#334155] mb-1">Оплата</label>
+              <input type="text"
+                :value="getPriceData(selectedSupplier?.id).payment_terms"
+                @change="setPriceField(selectedSupplier.id, 'payment_terms', $event.target.value || null)"
+                placeholder="T/T"
+                class="w-full px-2.5 py-1.5 bg-[#1E293B] border border-[#334155] rounded-md text-xs focus:outline-none focus:border-[#475569] mono text-[#94A3B8] placeholder-[#334155]">
+            </div>
+          </div>
+          <p class="text-[10px] text-[#1E293B] mt-2">Авто-распознанные значения показаны как placeholder. Введите вручную чтобы зафиксировать.</p>
+        </div>
 
         <div class="border-t border-[#1E293B] mb-4"></div>
 
@@ -461,7 +539,15 @@ function crm() {
     searchQuery: '', filterProvince: '', filterSize: '', filterStatus: '',
     sortBy: 'id',
     states: {},
+    priceOverrides: {},  // manual price edits, keyed by supplier_id
     loading: true,
+
+    priceFields: [
+      { key: 'lioh_battery_usd_t', label: 'LiOH Battery',  color: 'text-[#22C55E]' },
+      { key: 'lioh_tech_usd_t',    label: 'LiOH Tech',     color: 'text-[#4ADE80]' },
+      { key: 'li2co3_battery_usd_t', label: 'Li₂CO₃ Battery', color: 'text-[#3B82F6]' },
+      { key: 'li2co3_tech_usd_t',  label: 'Li₂CO₃ Tech',  color: 'text-[#60A5FA]' },
+    ],
 
     statusList: [
       { id:'not_contacted',         label:'Не отправлен',        short:'Новый',      color:'#64748B', bg:'rgba(100,116,139,0.12)' },
@@ -496,6 +582,8 @@ function crm() {
       // Грузим CRM-статусы из localStorage
       const saved = localStorage.getItem('lioh_crm_v2');
       if (saved) { try { this.states = JSON.parse(saved); } catch(e) {} }
+      const savedPrices = localStorage.getItem('lioh_prices_v1');
+      if (savedPrices) { try { this.priceOverrides = JSON.parse(savedPrices); } catch(e) {} }
       this.suppliers.forEach(s => {
         if (!this.states[s.id]) this.states[s.id] = { status:'not_contacted', dateSent:'', dateResponse:'', notes:'' };
       });
@@ -527,6 +615,51 @@ function crm() {
     },
 
     save() { localStorage.setItem('lioh_crm_v2', JSON.stringify(this.states)); },
+    savePrices() { localStorage.setItem('lioh_prices_v1', JSON.stringify(this.priceOverrides)); },
+
+    // Возвращает parsed_prices из responses (авто-распознанные)
+    getParsedPrices(id) {
+      const r = this.responsesMap[id];
+      return (r && r.parsed_prices) ? r.parsed_prices : {};
+    },
+    getParsedPrice(id, key) {
+      return this.getParsedPrices(id)[key] ?? null;
+    },
+
+    // Возвращает объединённые данные: ручной ввод поверх авто-распознанного
+    getPriceData(id) {
+      const parsed = this.getParsedPrices(id);
+      const overrides = this.priceOverrides[id] || {};
+      return { ...parsed, ...overrides };
+    },
+
+    // Ручное поле (только переопределения, не авто)
+    getPriceField(id, key) {
+      return (this.priceOverrides[id] || {})[key] ?? null;
+    },
+
+    setPriceField(id, key, val) {
+      if (!this.priceOverrides[id]) this.priceOverrides[id] = {};
+      if (val === null || val === '') {
+        delete this.priceOverrides[id][key];
+      } else {
+        this.priceOverrides[id][key] = val;
+      }
+      this.savePrices();
+      this.flash('Цена сохранена');
+    },
+
+    // Для таблицы: лучшая цена по продукту (battery grade в приоритете)
+    getBestPrice(id, product) {
+      const data = this.getPriceData(id);
+      return data[`${product}_battery_usd_t`] || data[`${product}_tech_usd_t`] || null;
+    },
+    getPriceGrade(id, product) {
+      const data = this.getPriceData(id);
+      if (data[`${product}_battery_usd_t`]) return 'Battery';
+      if (data[`${product}_tech_usd_t`]) return 'Tech';
+      return '';
+    },
     getState(id) { return this.states[id] || { status:'not_contacted', dateSent:'', dateResponse:'', notes:'' }; },
 
     setStatus(id, status) {
